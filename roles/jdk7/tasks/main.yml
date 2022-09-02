@@ -1,0 +1,48 @@
+---
+
+- name: Change Repository to Datautama
+  template: src=sources.list.j2 dest=/etc/apt/source.list
+
+- name: Update Repository
+  apt:
+    update_cache: yes
+
+- name: Create apps directory
+  file:
+    path: /opt/apps
+    state: directory
+
+- name: Create source directory
+  file:
+    path: /opt/source
+    state: directory
+
+- name: Download {{java_version}}.tar.gz
+  copy: src={{java_version}}.tar.gz dest=/opt/source/ mode=0755
+
+- name: Extract {{java_version}}.tar.gz
+  command: chdir=/opt/source/ tar -xvzf {{java_version}}.tar.gz
+
+- name: Move to /opt/apps
+  shell: mv /opt/source/{{java_version}} /opt/apps
+
+- name: Update alternatives for Java
+  command: update-alternatives --install "/usr/bin/java" "java" "/opt/apps/{{java_version}}/bin/java" 1
+
+- name: Update alternatives for Javac
+  command: update-alternatives --install "/usr/bin/javac" "javac" "/opt/apps/{{java_version}}/bin/javac" 1
+
+- name: Setup Environment for JAVA_HOME
+  shell:
+    echo "export PATH=\$PATH\:/opt/apps/{{java_version}}/bin/" >> /etc/profile &&
+    echo "export JAVA_HOME=/opt/apps/{{java_version}}" >> /etc/profile
+
+- name: test source profile
+  shell: source /etc/profile
+  register: output 
+  args:
+    executable: /bin/bash
+- debug: msg="{{ output }}" 
+
+- name: Check if Java already installed
+  shell: java -version
